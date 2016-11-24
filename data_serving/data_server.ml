@@ -11,21 +11,9 @@ let cwd = Sys.getcwd ()
 
 
 let create_dir path =
-  let steps = Astring.String.cuts ~empty:false ~sep:"/" path in
-  let rec aux acc = function
-    | [] | [_] -> ()
-    | hd :: tl ->
-       let par = acc @ [hd] in
-       let dir = String.concat "/" par in
-       if Sys.file_exists dir && Sys.is_directory dir then aux par tl
-       else if Sys.file_exists dir then begin
-         Sys.remove dir;
-         Unix.(mkdir dir 0x775);
-         aux par tl end
-       else begin
-         Unix.(mkdir dir 0x775);
-         aux par tl end in
-  aux [] steps
+  let cmd = Printf.sprintf "mkdir -p %s" path in
+  let () = Printf.printf "[data_server] create directory tree %s\n%!" path in
+  Sys.command cmd |> ignore
 
 
 let make_server ip port  =
@@ -56,7 +44,7 @@ let make_server ip port  =
         Server.respond_file ~headers ~fname ()
       else if meth = `POST then
         (*let () = Printf.printf "open %s\n%!" path in*)
-        let () = create_dir path in
+        let () = create_dir (List.rev steps |> List.tl |> List.rev |> String.concat "/") in
         let oc = open_out path in
         Cohttp_lwt_body.to_string body >>= fun body_str ->
         (*let () = Printf.printf "get string %s\n%!" body_str in*)
