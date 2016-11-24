@@ -39,7 +39,7 @@ let make_server ip port  =
       else if meth = `POST then
         let oc = open_out path in
         Cohttp_lwt_body.to_string body >>= fun body_str ->
-        output_string oc;
+        output_string oc body_str;
         flush oc;
         close_out oc;
         Server.respond ~headers ~status:`OK ~body:empty ()
