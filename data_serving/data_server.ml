@@ -39,9 +39,23 @@ let make_server ip port  =
     else
       let path = Filename.concat cwd (String.concat "/" steps) in
       let meth = Cohttp.Request.meth req in
-      if meth = `GET then
+      if meth = `GET && not (Sys.is_directory path) then
         let fname = Server.resolve_file ~docroot:"." ~uri in
         Server.respond_file ~headers ~fname ()
+      else if meth = `GET && Sys.is_directory path then
+        let files = Sys.readdir path |> Array.to_list in
+        let files = List.map (fun f -> Filename.concat path f) files in
+        List.fold_left (fun acc f ->
+           let ic = open_in f in
+           let c = input_line ic in
+           let () = close_in ic in
+           c :: acc) [] files
+        |> fun lst ->
+           let body =
+             Ezjsonm.strings lst
+             |> Ezjsonm.to_string
+             |> Cohttp_lwt_body.of_string in
+           Server.respond ~headers ~status:`OK ~body ()
       else if meth = `POST then
         (*let () = Printf.printf "open %s\n%!" path in*)
         let () = create_dir (List.rev steps |> List.tl |> List.rev |> String.concat "/") in
