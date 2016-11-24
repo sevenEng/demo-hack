@@ -23,6 +23,7 @@ let elm_of_queries ip domain =
 let make_https_server cert priv ip port  =
   let callback conn req body =
     let uri = Cohttp.Request.uri req in
+    let () = Printf.printf "[gk] connection for %s\n%! from consumer" (Uri.to_string uri) in
     let path = Uri.path uri in
   if path <> "/domain" then
     Server.respond_not_found ()
@@ -53,6 +54,14 @@ let make_https_server cert priv ip port  =
       Server.respond_error ~headers ~status:`Bad_request ~body ()
   in
 
+  Conduit_lwt_unix.init ~src:ip () >>= fun conduit_ctx ->
+  let ctx = Cohttp_lwt_unix_net.init ~ctx:conduit_ctx () in
+  let mode = `TCP (`Port port) in
+  let t = Server.make ~callback () in
+  Printf.printf "[gk] listening on %s:%d\n%!" ip port;
+  Server.create ~ctx ~mode t
+
+(*
   let server_config =
     `Crt_file_path cert, `Key_file_path priv, `No_password, `Port port in
   let server = `TLS_native server_config in
@@ -63,12 +72,13 @@ let make_https_server cert priv ip port  =
   let ctx = Cohttp_lwt_unix_net.init ~ctx:conduit_ctx () in
   let t = Server.make ~callback () in
   Printf.printf "[gk] listening on %s:%d\n%!" ip port;
-  Server.create ~ctx ~mode:server t
+  Server.create ~ctx ~mode:server t*)
 
 
 let make_http_server ip port  =
   let callback conn req body =
     let uri = Cohttp.Request.uri req in
+    let () = Printf.printf "[gk] connection for %s\n%! from owner" (Uri.to_string uri) in
     let path = Uri.path uri in
     let steps = Astring.String.cuts ~empty:false ~sep:"/" path in
     if path <> "/op" then
@@ -123,5 +133,5 @@ let () =
   and port = Sys.argv.(4) |> int_of_string in
 
   join [make_https_server cert priv ip port;
-        make_http_server ip 8080]
+        make_http_server ip 8088]
   |> Lwt_main.run
