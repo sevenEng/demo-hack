@@ -37,8 +37,10 @@ let make_server ip port  =
         let fname = Server.resolve_file ~docroot:"." ~uri in
         Server.respond_file ~headers ~fname ()
       else if meth = `POST then
+        let () = Printf.printf "open %s\n%!" path in
         let oc = open_out path in
         Cohttp_lwt_body.to_string body >>= fun body_str ->
+        let () = Printf.printf "get string %s\n%!" body_str in
         output_string oc body_str;
         flush oc;
         close_out oc;
