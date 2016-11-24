@@ -16,7 +16,7 @@ let create_dir path =
   Sys.command cmd |> ignore
 
 
-let make_server ip port  =
+let make_server cert priv ip port  =
   let callback conn req body =
     let uri = Cohttp.Request.uri req in
     let path = Uri.path uri in
@@ -70,15 +70,30 @@ let make_server ip port  =
         Server.respond_not_found ()
   in
 
+  let server_config =
+    `Crt_file_path cert, `Key_file_path priv, `No_password, `Port port in
+  let server = `TLS_native server_config in
+
+  let tls_server_key =
+    `TLS (`Crt_file_path cert, `Key_file_path priv, `No_password) in
+  Conduit_lwt_unix.init ~src:ip ~tls_server_key () >>= fun conduit_ctx ->
+  let ctx = Cohttp_lwt_unix_net.init ~ctx:conduit_ctx () in
+  let t = Server.make ~callback () in
+  Printf.printf "[data] listening on %s:%d\n%!" ip port;
+  Server.create ~ctx ~mode:server t
+(*
   Conduit_lwt_unix.init ~src:ip () >>= fun conduit_ctx ->
   let ctx = Cohttp_lwt_unix_net.init ~ctx:conduit_ctx () in
   let mode = `TCP (`Port port) in
   let t = Server.make ~callback () in
   Printf.printf "[data_server] listening on %s:%d\n%!" ip port;
-  Server.create ~ctx ~mode t
+  Server.create ~ctx ~mode t *)
 
 
 let () =
-  let ip = Sys.argv.(1)
-  and port = Sys.argv.(2) |> int_of_string in
-  Lwt_main.run (make_server ip port)
+  let cert = Filename.concat cwd Sys.argv.(1)
+  and priv = Filename.concat cwd Sys.argv.(2) in
+
+  let ip = Sys.argv.(3)
+  and port = Sys.argv.(4) |> int_of_string in
+  Lwt_main.run (make_server cert priv ip port)
