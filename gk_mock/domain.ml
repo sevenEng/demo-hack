@@ -9,7 +9,8 @@ let get_addr domain =
 let set_rule domain =
   get_addr domain
   |> fun (ip, port) ->
-     Printf.printf "setting rules for %s:%d...\n%!" ip port
+     Printf.printf "setting rules for %s:%d...\n%!" ip port;
+     ip, port
 
 
 
