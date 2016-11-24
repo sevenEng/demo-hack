@@ -80,11 +80,11 @@ let make_http_server ip port  =
     let uri = Cohttp.Request.uri req in
     let () = Printf.printf "[gk] connection for %s\n%! from owner" (Uri.to_string uri) in
     let path = Uri.path uri in
-    let steps = Astring.String.cuts ~empty:false ~sep:"/" path in
-    if path <> "/op" then
+    let op :: tl = Astring.String.cuts ~empty:false ~sep:"/" path in
+    if op <> "op" then
       Server.respond_not_found ()
     else
-      match List.tl steps with
+      match tl with
       | "list" :: [c] ->
          let l =
            (if c = "approved" then !approved
