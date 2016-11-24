@@ -6,6 +6,7 @@ module Client = Cohttp_lwt_unix.Client
 
 
 let headers = Cohttp.Header.init_with "Access-Control-Allow-Origin" "*"
+let empty = Cohttp_lwt_body.empty
 let cwd = Sys.getcwd ()
 
 
@@ -30,15 +31,27 @@ let make_server ip port  =
         |> Cohttp_lwt_body.of_string in
       Server.respond ~status:`OK ~headers ~body ()
     else
-      let fname = Server.resolve_file ~docroot:"." ~uri in
-      Server.respond_file ~headers ~fname ()
+      let path = Filename.concat cwd path in
+      let meth = Cohttp.Request.meth req in
+      if meth = `GET then
+        let fname = Server.resolve_file ~docroot:"." ~uri in
+        Server.respond_file ~headers ~fname ()
+      else if meth = `POST then
+        let oc = open_out path in
+        Cohttp_lwt_body.to_string body >>= fun body_str ->
+        output_string oc;
+        flush oc;
+        close_out oc;
+        Server.respond ~headers ~status:`OK ~body:empty ()
+      else
+        Server.respond_not_found ()
   in
 
   Conduit_lwt_unix.init ~src:ip () >>= fun conduit_ctx ->
   let ctx = Cohttp_lwt_unix_net.init ~ctx:conduit_ctx () in
   let mode = `TCP (`Port port) in
   let t = Server.make ~callback () in
-  Printf.printf "listening on %s:%d\n%!" ip port;
+  Printf.printf "[data_server] listening on %s:%d\n%!" ip port;
   Server.create ~ctx ~mode t
 
 
